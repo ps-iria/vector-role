@@ -3,11 +3,26 @@
   ansible.builtin.get_url:
     url: "{{ vector_rpm }}"
     dest: "./vector-{{ vector_version }}.rpm"
+  when: ansible_os_family == "RedHat"
   tags: vector
-- name: Install vector packages
+- name: Get Vector distrib
+  ansible.builtin.get_url:
+    url: "{{ vector_deb }}"
+    dest: "./vector-{{ vector_version }}.deb"
+  when: ansible_pkg_mgr == "apt"
+  tags: vector
+- name: Install vector packages rpm
   become: true
   ansible.builtin.yum:
     name: vector-{{ vector_version }}.rpm
+    disable_gpg_check: True
+  when: ansible_os_family == "RedHat"
+  tags: vector
+- name: Install vector packages deb
+  become: true
+  ansible.builtin.apt:
+    deb: vector-{{ vector_version }}.deb
+  when: ansible_pkg_mgr == "apt"
   tags: vector
 - name: Copy config
   become: true
@@ -33,16 +48,29 @@
     path: /media/logs
     state: directory
     mode: '0755'
+- name: Check if file exists
+  stat:
+    path: /media/logs/rsyslog.log
+  register: tmp_file
 - name: Make log file
   ansible.builtin.file:
     path: /media/logs/rsyslog.log
     state: touch
     mode: '0755'
-- name: Install rsyslog
-  become: true
-  ansible.builtin.yum:
-    name: rsyslog
-  notify: start_rsyslog
+  when: tmp_file.stat.exists == false
+# - name: Install rsyslog
+#   become: true
+#   ansible.builtin.yum:
+#     name: rsyslog
+#   notify: start_rsyslog
+#   when: ansible_os_family == "RedHat"
+# - name: Install rsyslog apt
+#   become: true
+#   apt:
+#     name: rsyslog
+#     state: present
+#   notify: start_rsyslog
+#   when: ansible_pkg_mgr == "apt"
 - name: copy rsyslog config
   become: true
   copy:
