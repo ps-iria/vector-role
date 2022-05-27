@@ -27,7 +27,7 @@ RUN if [ $(command -v apt-get) ]; then \
         && sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-* \
         && dnf makecache \
         && dnf --assumeyes upgrade \
-        && dnf --assumeyes install python3 sudo python3-devel python*-dnf bash iproute && dnf clean all; \
+        && dnf --assumeyes install python3 sudo python3-devel rsyslog python*-dnf bash iproute && dnf clean all; \
 
     # elif [ $(command -v dnf) ]; then \
     #   dnf makecache \
@@ -37,6 +37,7 @@ RUN if [ $(command -v apt-get) ]; then \
     elif [ $(command -v yum) ]; then \
       sed -i 's/^\(tsflags=*\)/# \1/g' /etc/yum.conf \
       && yum makecache fast \
+      && yum upgrade -y \
       && yum install -y /usr/bin/python /usr/bin/python2-config dbus systemd rsyslog sudo yum-plugin-ovl bash iproute \
       && sed -i 's/plugins=0/plugins=1/g' /etc/yum.conf \
       && yum clean all \
@@ -48,7 +49,7 @@ RUN if [ $(command -v apt-get) ]; then \
       && rm -rf /usr/share/doc/* /usr/share/man/* /tmp/* /var/tmp/*; \
     elif [ $(command -v apk) ]; then \
       apk update \
-      && apk add --no-cache python3 dbus sudo bash ca-certificates \
+      && apk add --no-cache python3 dbus rsyslog sudo bash ca-certificates \
       && rm -rf /usr/share/doc/* /usr/share/man/* /tmp/* /var/tmp/*; \
     fi
 
@@ -69,23 +70,23 @@ RUN if [ $(command -v systemctl) ]; then \
       systemctl set-default multi-user.target; \
     fi
 
-RUN set -xe \
-  && groupadd -r ${ANSIBLE_USER} \
-  && groupadd -r ${DEPLOY_GROUP} \
-  && useradd -m -g ${ANSIBLE_USER} ${ANSIBLE_USER} \
-  && usermod -aG ${DEPLOY_GROUP} ${ANSIBLE_USER} \
-  && echo "%${DEPLOY_GROUP} ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ansible
+# RUN set -xe \
+#   && groupadd -r ${ANSIBLE_USER} \
+#   && groupadd -r ${DEPLOY_GROUP} \
+#   && useradd -m -g ${ANSIBLE_USER} ${ANSIBLE_USER} \
+#   && usermod -aG ${DEPLOY_GROUP} ${ANSIBLE_USER} \
+#   && echo "%${DEPLOY_GROUP} ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ansible
 
-RUN (cd /lib/systemd/system/sysinit.target.wants/; for i in *; do [ $i == \
-    systemd-tmpfiles-setup.service ] || rm -f $i; done); \
-    rm -rf /lib/systemd/system/multi-user.target.wants/*;\
-    rm -rf /etc/systemd/system/*.wants/*;\
-    rm -rf /lib/systemd/system/local-fs.target.wants/*; \
-    rm -rf /lib/systemd/system/sockets.target.wants/*udev*; \
-    rm -rf /lib/systemd/system/sockets.target.wants/*initctl*; \
-    rm -rf /lib/systemd/system/basic.target.wants/*;\
-    rm -rf /lib/systemd/system/anaconda.target.wants/*;
+# RUN (cd /lib/systemd/system/sysinit.target.wants/; for i in *; do [ $i == \
+#     systemd-tmpfiles-setup.service ] || rm -f $i; done); \
+#     rm -rf /lib/systemd/system/multi-user.target.wants/*;\
+#     rm -rf /etc/systemd/system/*.wants/*;\
+#     rm -rf /lib/systemd/system/local-fs.target.wants/*; \
+#     rm -rf /lib/systemd/system/sockets.target.wants/*udev*; \
+#     rm -rf /lib/systemd/system/sockets.target.wants/*initctl*; \
+#     rm -rf /lib/systemd/system/basic.target.wants/*;\
+#     rm -rf /lib/systemd/system/anaconda.target.wants/*;
 
-STOPSIGNAL SIGRTMIN+3
-VOLUME [ "/sys/fs/cgroup" ]
+# STOPSIGNAL SIGRTMIN+3
+# VOLUME [ "/sys/fs/cgroup" ]
 CMD ["/sbin/init"]
